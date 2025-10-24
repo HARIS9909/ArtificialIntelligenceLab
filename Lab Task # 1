@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 # Step 2: Load the Dataset
-df = pd.read_csv(r'D:\PP TRY 2\netflix_titles.csv')
+df = pd.read_csv(r'/content/netflix_titles.csv')
 print("Dataset loaded successfully!")
 
 # Step 3: Initial Inspection
@@ -23,24 +23,16 @@ df['director'] = df['director'].fillna('Unknown')
 df['cast'] = df['cast'].fillna('Unknown')
 df['country'] = df['country'].fillna('Unknown')
 df['rating'] = df['rating'].fillna('Unrated')
-df['date_added'] = df['date_added'].fillna(method='ffill')  # forward-fill dates if possible
+df['date_added'] = df['date_added'].fillna(method='ffill')  
 
-# Step 5: Clean Text Encoding and Trim Spaces
-print("\n--- Cleaning Text Encoding and Whitespaces ---")
-df = df.applymap(lambda x: x.encode('utf-8', 'ignore').decode('utf-8') if isinstance(x, str) else x)
-df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-
-# Step 6: Convert 'date_added' to Datetime Format
-df['date_added'] = pd.to_datetime(df['date_added'], format='%d-%b-%y', errors='coerce')
-
-# Step 7: Handle Duration Column
+# Step 5: Handle Duration Column
 def extract_duration_value(value):
     if pd.isnull(value):
         return np.nan
     if 'Season' in str(value):
-        return int(value.split()[0])
+        return int(value.split()[0])  # Extract number of seasons
     elif 'min' in str(value):
-        return int(value.split()[0])
+        return int(value.split()[0])  # Extract number of minutes
     return np.nan
 
 def extract_duration_type(value):
@@ -55,18 +47,16 @@ def extract_duration_type(value):
 df['duration_value'] = df['duration'].apply(extract_duration_value)
 df['duration_type'] = df['duration'].apply(extract_duration_type)
 
-# Step 8: Split Multi-Value Columns
-df['cast_list'] = df['cast'].apply(lambda x: [i.strip() for i in str(x).split(',')])
-df['country_list'] = df['country'].apply(lambda x: [i.strip() for i in str(x).split(',')])
-df['genres'] = df['listed_in'].apply(lambda x: [i.strip() for i in str(x).split(',')])
+# Step 6: Add `is_movie` Flag
+df['is_movie'] = df['type'].apply(lambda x: 1 if x == 'Movie' else 0)
 
-# Step 9: Normalize Ratings
+# Step 7: Normalize Ratings
 df['rating'] = df['rating'].replace({'UR': 'Unrated', 'NR': 'Unrated'})
 
-# Step 10: Remove Duplicates
+# Step 8: Remove Duplicates
 df.drop_duplicates(subset=['title', 'type'], inplace=True)
 
-# Step 11: Detect and Handle Outliers (for numeric columns)
+# Step 9: Detect and Handle Outliers (for numeric columns)
 # (In this dataset, only duration_value is numeric)
 q1 = df['duration_value'].quantile(0.25)
 q3 = df['duration_value'].quantile(0.75)
@@ -79,26 +69,20 @@ df['duration_value'] = np.where(
     df['duration_value']
 )
 
-# Step 12: Add Derived Columns
-df['year_added'] = df['date_added'].dt.year
-df['month_added'] = df['date_added'].dt.month_name()
-df['is_movie'] = df['type'].apply(lambda x: 1 if x == 'Movie' else 0)
-
-# Step 13: Reorder Columns for Clean Export
+# Step 10: Reorder Columns for Clean Export
 final_columns = [
     'show_id', 'type', 'title', 'director', 'cast', 'country',
     'release_year', 'rating', 'duration_value', 'duration_type',
-    'genres', 'description', 'date_added', 'year_added', 'month_added', 'is_movie'
+    'listed_in', 'description', 'is_movie'
 ]
 df = df[final_columns]
 
-# Step 14: Save the Cleaned Dataset
+# Step 11: Save the Cleaned Dataset
 df.to_csv("netflix_cleaned.csv", index=False)
 print("\n Cleaned dataset saved successfully as 'netflix_cleaned.csv'!")
 
-# Step 15: Summary
+# Step 12: Summary
 print("\n--- Cleaning Summary ---")
 print("Remaining Missing Values:\n", df.isnull().sum())
 print("\nFinal Shape:", df.shape)
 print("\nSample Cleaned Data:\n", df.head(5))
-
